@@ -80,14 +80,16 @@ class IntesisBase:
             if self._writer:
                 self._writer.write(command.encode("ascii"))
                 await self._writer.drain()
-                timeout = 5.0
+                timeout = 20.0
                 start_time = asyncio.get_event_loop().time()
                 while not self._received_response.is_set():
                     if asyncio.get_event_loop().time() - start_time > timeout:
                         _LOGGER.error("Timeout waiting for response")
                         await self.stop()
-                        break
+                        raise TimeoutError("Timeout waiting for response")
                     await asyncio.sleep(0.1)
+        except TimeoutError:
+            raise
         except OSError as exc:
             _LOGGER.error("%s Exception. %s / %s", type(exc), exc.args, exc)
         except Exception as exc:
@@ -252,6 +254,25 @@ class IntesisBase:
         await self._set_value(
             device_id, COMMAND_MAP["hvane"]["uid"], COMMAND_MAP["hvane"]["values"][vane]
         )
+
+    async def set_zone_status(self, device_id, zone: int, status: str):
+        """Public method to set the zone status (on/off/spill)."""
+        if not (1 <= zone <= 10):
+            raise ValueError("Zone must be between 1 and 10")
+        
+        # Calculate UID: Zone 1 = 200, Zone 2 = 201, ...
+        uid = 199 + zone
+        
+        # Check if zone is a spill zone (value 7)
+        current_status = self._devices[str(device_id)].get(f"zone_status_{zone}")
+        if current_status == 7 or current_status == "spill":
+            raise ValueError("Cannot control a spill zone")
+        
+        status_values = {"off": 0, "on": 1, "spill": 7}
+        if status.lower() not in status_values:
+            raise ValueError(f"Status must be one of {list(status_values.keys())}")
+            
+        await self._set_value(device_id, uid, status_values[status.lower()])
 
     async def set_mode_heat(self, device_id):
         """Public method to set device to heat asynchronously."""

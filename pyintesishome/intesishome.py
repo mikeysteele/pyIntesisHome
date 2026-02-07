@@ -120,16 +120,17 @@ class IntesisHome(IntesisBase):
                 auth_msg = '{"command":"connect_req","data":{"token":%s}}' % (
                     self._auth_token
                 )
+                self._receive_task = self._event_loop.create_task(self._data_received())
                 await self._send_command(auth_msg)
                 # Clear the OTP
                 self._auth_token = None
-                self._receive_task = self._event_loop.create_task(self._data_received())
                 self._keepalive_task = self._event_loop.create_task(
                     self._send_keepalive()
                 )
             # Get authentication token over HTTP POST
-            except (  # pylint: disable=broad-except
+            except (
                 ConnectionRefusedError,
+                TimeoutError,
                 Exception,
             ) as exc:
                 _LOGGER.error(
@@ -139,6 +140,7 @@ class IntesisHome(IntesisBase):
                     exc,
                 )
                 self._connected = False
+                raise exc
             self._connecting = False
 
     async def poll_status(self, sendcallback=False):

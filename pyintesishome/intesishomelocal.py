@@ -232,6 +232,10 @@ class IntesisHomeLocal(IntesisBase):
         await self.poll_status()
         _LOGGER.debug("Successful authenticated and polled. Fetching Datapoints")
         await self.get_datapoints()
+        values = await self._request_values()
+        if values:
+            for uid, value in values.items():
+                self._update_device_state(self._device_id, uid, value)
         self._connected = True
         _LOGGER.debug("Starting updater task")
         self._update_task = asyncio.create_task(self._run_updater())
