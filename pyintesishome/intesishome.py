@@ -38,6 +38,23 @@ class IntesisHome(IntesisBase):
         self._cmd_server_port = None
         self._auth_token = None
         self._controller_id = username
+        self._watchdog_task = None
+        # Start watchdog
+        if loop:
+            self._watchdog_task = loop.create_task(self._watchdog())
+        else:
+            self._watchdog_task = asyncio.get_event_loop().create_task(self._watchdog())
+
+    async def _watchdog(self):
+        """Monitor connection and reconnect if lost."""
+        while True:
+            await asyncio.sleep(20)
+            if not self._connected and not self._connecting:
+                _LOGGER.info("Watchdog: Connection lost. Attempting to reconnect...")
+                try:
+                    await self.connect()
+                except Exception as e:
+                    _LOGGER.error("Watchdog: Reconnect failed: %s", e)
 
     async def _parse_response(self, decoded_data):
         _LOGGER.debug("%s API Received: %s", self._device_type, decoded_data)
@@ -83,8 +100,13 @@ class IntesisHome(IntesisBase):
                     f'{{"command":"get","data":{{"deviceId":{device_id},"uid":10}}}}'
                 )
                 await self._send_command(message)
+                await self._send_command(message)
         except asyncio.CancelledError:
             _LOGGER.debug("Cancelled the keepalive task")
+        except Exception as ex:
+            _LOGGER.error("Keepalive failed: %s", ex)
+            self._connected = False
+            self._event_loop.create_task(self._reconnect_handler())
 
     async def connect(self):
         """Public method for connecting to IntesisHome/Airconwithme API"""
@@ -140,8 +162,18 @@ class IntesisHome(IntesisBase):
                     exc,
                 )
                 self._connected = False
-                raise exc
+                
             self._connecting = False
+
+            # If we failed or disconnected, schedule a reconnect
+            if not self._connected:
+                _LOGGER.info("Scheduling reconnect in 10 seconds...")
+                self._event_loop.create_task(self._reconnect_handler())
+
+    async def _reconnect_handler(self):
+        """Internal method to handle reconnection delay and retry."""
+        await asyncio.sleep(10)
+        await self.connect()
 
     async def poll_status(self, sendcallback=False):
         """Public method to query IntesisHome for state of device.

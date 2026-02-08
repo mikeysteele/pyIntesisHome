@@ -1414,7 +1414,7 @@ wheels = [
 [[package]]
 name = "pyintesishome"
 version = "1.9.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
 ]
