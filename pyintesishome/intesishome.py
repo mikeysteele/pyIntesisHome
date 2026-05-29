@@ -118,52 +118,53 @@ class IntesisHome(IntesisBase):
             await self._cancel_task_if_exists(self._receive_task)
 
             try:
-                self._auth_token = await self.poll_status()
-            except IHAuthenticationError as exc:
-                _LOGGER.error("Error connecting to IntesisHome API: %s", exc)
-                raise IHAuthenticationError from exc
-            except IHConnectionError as exc:
-                _LOGGER.error("Error connecting to IntesisHome API: %s", exc)
-                raise IHConnectionError from exc
+                try:
+                    self._auth_token = await self.poll_status()
+                except IHAuthenticationError as exc:
+                    _LOGGER.error("Error connecting to IntesisHome API: %s", exc)
+                    raise IHAuthenticationError from exc
+                except IHConnectionError as exc:
+                    _LOGGER.error("Error connecting to IntesisHome API: %s", exc)
+                    raise IHConnectionError from exc
 
-            _LOGGER.debug(
-                "Opening connection to %s API at %s:%i",
-                self._device_type,
-                self._cmd_server,
-                self._cmd_server_port,
-            )
-            try:
-                # Create asyncio socket
-                self._reader, self._writer = await asyncio.open_connection(
-                    self._cmd_server, self._cmd_server_port
-                )
-
-                # pylint: disable=C0209
-                auth_msg = '{"command":"connect_req","data":{"token":%s}}' % (
-                    self._auth_token
-                )
-                self._receive_task = self._event_loop.create_task(self._data_received())
-                await self._send_command(auth_msg)
-                # Clear the OTP
-                self._auth_token = None
-                self._keepalive_task = self._event_loop.create_task(
-                    self._send_keepalive()
-                )
-            # Get authentication token over HTTP POST
-            except (
-                ConnectionRefusedError,
-                TimeoutError,
-                Exception,
-            ) as exc:
-                _LOGGER.error(
-                    "Connection to %s:%s failed with exception %s",
+                _LOGGER.debug(
+                    "Opening connection to %s API at %s:%i",
+                    self._device_type,
                     self._cmd_server,
                     self._cmd_server_port,
-                    exc,
                 )
-                self._connected = False
-                
-            self._connecting = False
+                try:
+                    # Create asyncio socket
+                    self._reader, self._writer = await asyncio.open_connection(
+                        self._cmd_server, self._cmd_server_port
+                    )
+
+                    # pylint: disable=C0209
+                    auth_msg = '{"command":"connect_req","data":{"token":%s}}' % (
+                        self._auth_token
+                    )
+                    self._receive_task = self._event_loop.create_task(self._data_received())
+                    await self._send_command(auth_msg)
+                    # Clear the OTP
+                    self._auth_token = None
+                    self._keepalive_task = self._event_loop.create_task(
+                        self._send_keepalive()
+                    )
+                # Get authentication token over HTTP POST
+                except (
+                    ConnectionRefusedError,
+                    TimeoutError,
+                    Exception,
+                ) as exc:
+                    _LOGGER.error(
+                        "Connection to %s:%s failed with exception %s",
+                        self._cmd_server,
+                        self._cmd_server_port,
+                        exc,
+                    )
+                    self._connected = False
+            finally:
+                self._connecting = False
 
             # If we failed or disconnected, schedule a reconnect
             if not self._connected:
@@ -173,7 +174,18 @@ class IntesisHome(IntesisBase):
     async def _reconnect_handler(self):
         """Internal method to handle reconnection delay and retry."""
         await asyncio.sleep(10)
-        await self.connect()
+        try:
+            await self.connect()
+        except Exception as exc:
+            _LOGGER.error("Reconnect failed: %s", exc)
+            if not self._connected:
+                _LOGGER.info("Scheduling reconnect in 10 seconds...")
+                self._event_loop.create_task(self._reconnect_handler())
+
+    async def stop(self):
+        """Public method for shutting down connectivity."""
+        await self._cancel_task_if_exists(self._watchdog_task)
+        await super().stop()
 
     async def poll_status(self, sendcallback=False):
         """Public method to query IntesisHome for state of device.
