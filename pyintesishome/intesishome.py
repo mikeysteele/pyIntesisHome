@@ -234,7 +234,7 @@ class IntesisHome(IntesisBase):
             for installation in config.get("inst"):
                 for device in installation.get("devices"):
                     self._devices[device["id"]] = {
-                        "name": device["name"],
+                        "name": str(device["name"]) if device.get("name") is not None else None,
                         "widgets": device["widgets"],
                         "model": device["modelId"],
                     }
