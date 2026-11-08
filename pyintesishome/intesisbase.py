@@ -360,6 +360,29 @@ class IntesisBase:
             )
         )
 
+    async def set_zone_status(self, device_id, zone: int, status: str) -> bool:
+        """Set a zone on or off. Returns True on cloud ACK, False otherwise.
+
+        Zones map to UIDs 200-209 (zone 1 = 200). Spill zones (value 7) are
+        managed by the unit and cannot be controlled.
+        """
+        if not 1 <= zone <= 10:
+            raise ValueError("Zone must be between 1 and 10")
+
+        current_status = (self._devices.get(str(device_id)) or {}).get(
+            f"zone_status_{zone}"
+        )
+        if current_status in (7, "spill"):
+            raise ValueError("Cannot control a spill zone")
+
+        status_values = {"off": 0, "on": 1}
+        if status.lower() not in status_values:
+            raise ValueError(f"Status must be one of {list(status_values)}")
+
+        return bool(
+            await self._set_value(device_id, 199 + zone, status_values[status.lower()])
+        )
+
     async def set_mode_heat(self, device_id) -> bool:
         """Set device to heat. Returns True on cloud ACK, False otherwise."""
         return await self.set_mode(device_id, "heat")
