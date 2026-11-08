@@ -396,7 +396,11 @@ class IntesisHomeLocal(IntesisBase):
             )
             # Setup devices
             self._devices[self._device_id] = {
-                "name": info.get("ownSSID"),
+                "name": (
+                    str(info.get("ownSSID"))
+                    if info.get("ownSSID") is not None
+                    else None
+                ),
                 "widgets": [],
                 "model": info.get("deviceModel"),
                 "fw_version": info.get("wlanFwVersion"),
