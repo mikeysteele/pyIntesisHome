@@ -231,6 +231,8 @@ INTESIS_MAP = {
     186: {"name": "uid_186"},
     191: {"name": "uid_binary_input_sleep_mode"},
     192: {"name": "error_address"},
+    193: {"name": "uid_193"},
+    195: {"name": "uid_195"},
     197: {"name": "number_of_zones"},
     200: {"name": "zone_status_1", "values": {0: "off", 1: "on", 7: "spill"}},
     201: {"name": "zone_status_2", "values": {0: "off", 1: "on", 7: "spill"}},
@@ -252,7 +254,10 @@ INTESIS_MAP = {
     50004: {"name": "cool_temperature_min"},
     50005: {"name": "cool_temperature_max"},
     50006: {"name": "heat_temperature_min"},
-    50007: {"name": "heat_temperature_min"},
+    50007: {"name": "heat_temperature_max"},
+    50008: {"name": "uid_50008"},
+    50010: {"name": "uid_50010"},
+    50100: {"name": "uid_50100"},
     60002: {"name": "rssi"},
 }
 
