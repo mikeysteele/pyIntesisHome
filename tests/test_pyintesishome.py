@@ -1216,3 +1216,41 @@ async def test_error_classification_reads_the_code_not_the_message(cloud_control
             await cloud_controller.poll_status()
 
     assert cloud_controller.authentication_failed is False
+
+
+@pytest.mark.asyncio
+async def test_set_zone_status_sends_zone_uid(cloud_controller):
+    with patch.object(
+        cloud_controller, "_set_value", AsyncMock(return_value=True)
+    ) as set_value:
+        assert await cloud_controller.set_zone_status(MOCK_DEVICE_ID, 3, "on")
+        set_value.assert_awaited_once_with(MOCK_DEVICE_ID, 202, 1)
+        set_value.reset_mock()
+        assert await cloud_controller.set_zone_status(MOCK_DEVICE_ID, 10, "OFF")
+        set_value.assert_awaited_once_with(MOCK_DEVICE_ID, 209, 0)
+
+
+@pytest.mark.asyncio
+async def test_set_zone_status_returns_false_without_ack(cloud_controller):
+    with patch.object(cloud_controller, "_set_value", AsyncMock(return_value=False)):
+        assert not await cloud_controller.set_zone_status(MOCK_DEVICE_ID, 1, "on")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "zone,status", [(0, "on"), (11, "on"), (1, "spill"), (1, "bogus")]
+)
+async def test_set_zone_status_rejects_invalid(cloud_controller, zone, status):
+    with patch.object(cloud_controller, "_set_value", AsyncMock()) as set_value:
+        with pytest.raises(ValueError):
+            await cloud_controller.set_zone_status(MOCK_DEVICE_ID, zone, status)
+        set_value.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_set_zone_status_rejects_spill_zone(cloud_controller):
+    cloud_controller._devices[str(MOCK_DEVICE_ID)]["zone_status_2"] = "spill"
+    with patch.object(cloud_controller, "_set_value", AsyncMock()) as set_value:
+        with pytest.raises(ValueError):
+            await cloud_controller.set_zone_status(MOCK_DEVICE_ID, 2, "on")
+        set_value.assert_not_awaited()
