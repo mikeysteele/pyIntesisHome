@@ -540,13 +540,20 @@ class IntesisHome(IntesisBase):
 
         for installation in config.get("inst") or []:
             for device in installation.get("devices") or []:
-                self._devices[device["id"]] = {
-                    "name": (
-                        str(device["name"]) if device.get("name") is not None else None
-                    ),
-                    "widgets": device["widgets"],
-                    "model": device["modelId"],
-                }
+                device_id = str(device["id"])
+                if device_id not in self._devices:
+                    self._devices[device_id] = {}
+                self._devices[device_id].update(
+                    {
+                        "name": (
+                            str(device["name"])
+                            if device.get("name") is not None
+                            else None
+                        ),
+                        "widgets": device["widgets"],
+                        "model": device["modelId"],
+                    }
+                )
                 _LOGGER.debug(repr(self._devices))
 
     def _apply_statuses(self, status_response) -> list:
