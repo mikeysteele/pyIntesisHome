@@ -379,9 +379,16 @@ class IntesisBase:
         if status.lower() not in status_values:
             raise ValueError(f"Status must be one of {list(status_values)}")
 
-        return bool(
+        success = bool(
             await self._set_value(device_id, 199 + zone, status_values[status.lower()])
         )
+        if success:
+            self._update_device_state(
+                device_id, 199 + zone, status_values[status.lower()]
+            )
+            if hasattr(self, "_poll_wakeup") and self._poll_wakeup is not None:
+                self._poll_wakeup.set()
+        return success
 
     async def set_mode_heat(self, device_id) -> bool:
         """Set device to heat. Returns True on cloud ACK, False otherwise."""

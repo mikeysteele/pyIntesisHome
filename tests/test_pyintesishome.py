@@ -1225,9 +1225,11 @@ async def test_set_zone_status_sends_zone_uid(cloud_controller):
     ) as set_value:
         assert await cloud_controller.set_zone_status(MOCK_DEVICE_ID, 3, "on")
         set_value.assert_awaited_once_with(MOCK_DEVICE_ID, 202, 1)
+        assert cloud_controller._devices[str(MOCK_DEVICE_ID)]["zone_status_3"] == "on"
         set_value.reset_mock()
         assert await cloud_controller.set_zone_status(MOCK_DEVICE_ID, 10, "OFF")
         set_value.assert_awaited_once_with(MOCK_DEVICE_ID, 209, 0)
+        assert cloud_controller._devices[str(MOCK_DEVICE_ID)]["zone_status_10"] == "off"
 
 
 @pytest.mark.asyncio
