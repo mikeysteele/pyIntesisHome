@@ -316,7 +316,10 @@ class IntesisHomeLocal(IntesisBase):
             uid=uid,
             value=value,
         )
-        return result is not None
+        if result is not None:
+            self._update_device_state(device_id, uid, value)
+            return True
+        return False
 
     async def get_datapoints(self) -> dict:
         """Get all available datapoints."""

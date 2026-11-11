@@ -725,7 +725,10 @@ class IntesisHome(IntesisBase):
         )
         try:
             await self._send_command(message, wait_for_response=False)
-            return await asyncio.wait_for(fut, timeout=self._set_ack_timeout)
+            success = await asyncio.wait_for(fut, timeout=self._set_ack_timeout)
+            if success:
+                self._update_device_state(device_id, uid, value)
+            return success
         except asyncio.TimeoutError:
             _LOGGER.warning(
                 "SET uid=%s value=%s seqNo=%s not acknowledged within %ss",
@@ -830,6 +833,7 @@ class IntesisHome(IntesisBase):
                 uid,
                 value,
             )
+            self._update_device_state(device_id, uid, value)
             return True
         return False
 

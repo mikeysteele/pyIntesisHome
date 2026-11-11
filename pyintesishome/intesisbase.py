@@ -203,6 +203,8 @@ class IntesisBase:
     def _update_device_state(self, device_id, uid, value):
         """Internal method to update the state table of IntesisHome/Airconwithme devices."""
         device_id = str(device_id)
+        if device_id not in self._devices:
+            self._devices[device_id] = {}
 
         if uid in INTESIS_MAP:
             # If the value is null (32768), set as None
